@@ -1,24 +1,24 @@
 import pkg from './package.json'
+import json from '@rollup/plugin-json'
 import commonjs from '@rollup/plugin-commonjs'
-import replace from '@rollup/plugin-replace'
 
 export default {
   input: 'src/ergogen.js',
-  external: ['makerjs', 'js-yaml'],
+  external: ['makerjs', 'js-yaml', 'mathjs', 'kle-serial'],
   output: {
     name: 'ergogen',
     file: 'dist/ergogen.js',
     format: 'umd',
-    banner: `/*!\n * ergogen v${pkg.version}\n * https://zealot.hu/ergogen\n */\n`,
+    banner: `/*!\n * Ergogen v${pkg.version}\n * https://ergogen.xyz\n */\n`,
     globals: {
       'makerjs': 'makerjs',
-      'js-yaml': 'jsyaml'
+      'js-yaml': 'jsyaml',
+      'mathjs': 'math',
+      'kle-serial': 'kle'
     }
   },
   plugins: [
-    commonjs(),
-    replace({
-      __ergogen_version: pkg.version
-    })
+    json(),
+    commonjs()
   ]
 }

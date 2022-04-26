@@ -1,30 +1,15 @@
 #!/usr/bin/env node
 
-// libs
-
 const fs = require('fs-extra')
 const path = require('path')
 const yaml = require('js-yaml')
 const yargs = require('yargs')
-
-// internals
-
-const u = require('./utils')
-const io = require('./io')
-const points_lib = require('./points')
-const outlines_lib = require('./outlines')
-const pcbs_lib = require('./pcbs')
-const cases_lib = require('./cases')
+const ergogen = require('./ergogen')
+const pkg = require('../package.json')
 
 // command line args
 
 const args = yargs
-    .option('config', {
-        alias: 'c',
-        demandOption: true,
-        describe: 'Config yaml/json file',
-        type: 'string'
-    })
     .option('output', {
         alias: 'o',
         default: path.resolve('output'),
@@ -44,64 +29,98 @@ const args = yargs
     })
     .argv
 
-if (args.clean) fs.removeSync(args.o)
-fs.mkdirpSync(args.o)
+// config reading
+
+const config_file = args._[0]
+if (!config_file) {
+    console.error('Usage: ergogen <config_file> [options]')
+    process.exit(1)
+}
 
 let config_text
 try {
-    config_text = fs.readFileSync(args.c).toString()
+    config_text = fs.readFileSync(config_file).toString()
 } catch (err) {
-    throw new Error(`Could not read file "${args.c}": ${err}`)
+    console.error(`Could not read config file "${config_file}": ${err}`)
+    process.exit(2)
 }
 
-const is_yaml = args.c.endsWith('.yaml') || args.c.endsWith('.yml')
-const config_parser = is_yaml ? yaml.load : JSON.parse
-let config
+const title_suffix = args.debug ? ' (Debug Mode)' : ''
+console.log(`Ergogen v${pkg.version} CLI${title_suffix}`)
+console.log()
+
+;(async () => {
+
+// processing
+
+let results
 try {
-    config = config_parser(config_text)
+    results = await ergogen.process(config_text, args.debug, s => console.log(s))
 } catch (err) {
-    throw new Error(`Malformed input within "${args.c}": ${err}`)
+    console.error(err)
+    process.exit(3)
 }
 
-// points
+// helpers
 
-console.log('Parsing points...')
-const points = points_lib.parse(config.points)
-if (args.debug) {
-    const points_demo = points_lib.visualize(points)
-    io.dump_model(points_demo, path.join(args.o, 'points/points_demo'), args.debug)
-    fs.writeJSONSync(path.join(args.o, 'points/points.json'), points, {spaces: 4})
+const single = (data, rel) => {
+    if (!data) return
+    const abs = path.join(args.o, rel)
+    fs.mkdirpSync(path.dirname(abs))
+    if (abs.endsWith('.yaml')) {
+        fs.writeFileSync(abs, yaml.dump(data, {indent: 4}))
+    } else {
+        fs.writeFileSync(abs, data)
+    }
 }
 
-// outlines
-
-console.log('Generating outlines...')
-const outlines = outlines_lib.parse(config.outlines || {}, points)
-for (const [name, outline] of Object.entries(outlines)) {
-    if (!args.debug && name.startsWith('_')) continue
-    io.dump_model(outline, path.join(args.o, `outlines/${name}`), args.debug)
+const composite = (data, rel) => {
+    if (!data) return
+    const abs = path.join(args.o, rel)
+    if (data.yaml) {
+        fs.mkdirpSync(path.dirname(abs))
+        fs.writeFileSync(abs + '.yaml', yaml.dump(data.yaml, {indent: 4}))
+    }
+    for (const format of ['svg', 'dxf', 'jscad']) {
+        if (data[format]) {
+            fs.mkdirpSync(path.dirname(abs))
+            fs.writeFileSync(abs + '.' + format, data[format])
+        }
+    }
 }
 
-// pcbs
+// output
 
-console.log('Scaffolding PCBs...')
-const pcbs = pcbs_lib.parse(config.pcbs || {}, points, outlines)
-for (const [pcb_name, pcb_text] of Object.entries(pcbs)) {
-    const pcb_file = path.join(args.o, `pcbs/${pcb_name}.kicad_pcb`)
-    fs.mkdirpSync(path.dirname(pcb_file))
-    fs.writeFileSync(pcb_file, pcb_text)
+if (args.clean) {
+    console.log('Cleaning output folder...')
+    fs.removeSync(args.o)
 }
 
-// cases
+console.log('Writing output to disk...')
+fs.mkdirpSync(args.o)
 
-console.log('Extruding cases...')
-const cases = cases_lib.parse(config.cases || {}, outlines)
-for (const [case_name, case_text] of Object.entries(cases)) {
-    const case_file = path.join(args.o, `cases/${case_name}.jscad`)
-    fs.mkdirpSync(path.dirname(case_file))
-    fs.writeFileSync(case_file, case_text)
+single(results.raw, 'source/raw.txt')
+single(results.canonical, 'source/canonical.yaml')
+
+single(results.units, 'points/units.yaml')
+single(results.points, 'points/points.yaml')
+composite(results.demo, 'points/demo')
+
+for (const [name, outline] of Object.entries(results.outlines)) {
+    composite(outline, `outlines/${name}`)
+}
+
+for (const [name, _case] of Object.entries(results.cases)) {
+    composite(_case, `cases/${name}`)
+}
+
+for (const [name, pcb] of Object.entries(results.pcbs)) {
+    single(pcb, `pcbs/${name}.kicad_pcb`)
 }
 
 // goodbye
 
 console.log('Done.')
+console.log()
+
+})()

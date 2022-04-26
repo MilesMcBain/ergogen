@@ -1,6 +1,36 @@
 const m = require('makerjs')
 
-exports.deepcopy = (value) => JSON.parse(JSON.stringify(value))
+exports.deepcopy = value => {
+    if (value === undefined) return undefined
+    return JSON.parse(JSON.stringify(value))
+}
+
+const deep = exports.deep = (obj, key, val) => {
+    const levels = key.split('.')
+    const last = levels.pop()
+    let step = obj
+    for (const level of levels) {
+        step[level] = step[level] || {}
+        step = step[level]
+    }
+    if (val === undefined) return step[last]
+    step[last] = val
+    return obj
+}
+
+exports.template = (str, vals={}) => {
+    const regex = /\{\{([^}]*)\}\}/g
+    let res = str
+    let shift = 0
+    for (const match of str.matchAll(regex)) {
+        const replacement = deep(vals, match[1]) || ''
+        res = res.substring(0, match.index + shift)
+            + replacement
+            + res.substring(match.index + shift + match[0].length)
+        shift += replacement.length - match[0].length
+    }
+    return res
+}
 
 const eq = exports.eq = (a=[], b=[]) => {
     return a[0] === b[0] && a[1] === b[1]
@@ -38,9 +68,23 @@ exports.poly = (arr) => {
     return res
 }
 
-const farPoint = [1234.1234, 2143.56789]
+exports.bbox = (arr) => {
+    let minx = Infinity
+    let miny = Infinity
+    let maxx = -Infinity
+    let maxy = -Infinity
+    for (const p of arr) {
+        minx = Math.min(minx, p[0])
+        miny = Math.min(miny, p[1])
+        maxx = Math.max(maxx, p[0])
+        maxy = Math.max(maxy, p[1])
+    }
+    return {low: [minx, miny], high: [maxx, maxy]}
+}
 
-exports.union = (a, b) => {
+const farPoint = exports.farPoint = [1234.1234, 2143.56789]
+
+exports.union = exports.add = (a, b) => {
     return m.model.combine(a, b, false, true, false, true, {
         farPoint
     })
@@ -64,4 +108,29 @@ exports.stack = (a, b) => {
             a, b
         }
     }
+}
+
+const semver = exports.semver = (str, name='') => {
+    let main = str.split('-')[0]
+    if (main.startsWith('v')) {
+        main = main.substring(1)
+    }
+    while (main.split('.').length < 3) {
+        main += '.0'
+    }
+    if (/^\d+\.\d+\.\d+$/.test(main)) {
+        const parts = main.split('.').map(part => parseInt(part, 10))
+        return {major: parts[0], minor: parts[1], patch: parts[2]}
+    } else throw new Error(`Invalid semver "${str}" at ${name}!`)
+}
+
+const satisfies = exports.satisfies = (current, expected) => {
+    if (current.major === undefined) current = semver(current)
+    if (expected.major === undefined) expected = semver(expected)
+    return current.major === expected.major && (
+        current.minor > expected.minor || (
+            current.minor === expected.minor && 
+            current.patch >= expected.patch
+        )
+    )
 }

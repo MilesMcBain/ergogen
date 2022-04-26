@@ -1,14 +1,16 @@
 module.exports = {
-    nets: ['net'],
+    nets: {
+        net: undefined
+    },
     params: {
-        class: 'P',
+        class: 'PAD',
         width: 1,
         height: 1,
         front: true,
         back: true,
         text: '',
         align: 'left',
-        mirrored: '!mirrored'
+        mirrored: '=mirrored'
     },
     body: p => {
 
@@ -27,7 +29,7 @@ module.exports = {
             if (align == 'up') y += p.param.height / 2 + plus
             if (align == 'down') y -= p.param.height / 2 + plus
             const text = `(fp_text user ${p.param.text} (at ${x} ${y} ${p.rot}) (layer ${side}.SilkS) (effects (font (size 0.8 0.8) (thickness 0.15)) ${mirror}))`
-            return `(pad 1 smd rect (at 0 0 ${p.rot}) (size ${p.param.width} ${p.param.height}) (layers ${side}.Cu ${side}.Paste ${side}.Mask) ${p.net.net})\n${text}`
+            return `(pad 1 smd rect (at 0 0 ${p.rot}) (size ${p.param.width} ${p.param.height}) (layers ${side}.Cu ${side}.Paste ${side}.Mask) ${p.net.net.str})\n${text}`
         }
 
         return `

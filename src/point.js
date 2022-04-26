@@ -58,8 +58,18 @@ module.exports = class Point {
         return m.model.moveRelative(m.model.rotate(model, this.r), this.p)
     }
 
+    unposition(model) {
+        return m.model.rotate(m.model.moveRelative(model, [-this.x, -this.y]), -this.r)
+    }
+
     rect(size=14) {
-        let rect = u.rect(size, size, [-size/2, -size/2], this.meta.mirrored)
+        let rect = u.rect(size, size, [-size/2, -size/2])
         return this.position(rect)
+    }
+
+    angle(other) {
+        const dx = other.x - this.x
+        const dy = other.y - this.y
+        return -Math.atan2(dx, dy) * (180 / Math.PI)
     }
 }
