@@ -1,0 +1,146 @@
+units:
+  ring_shift_x: 20.032
+  ring_shift_y: 19.93
+  middle_shift_x: ring_shift_x + 24.68
+  middle_shift_y: ring_shift_y + 8.77
+  inner_shift_x: middle_shift_x + 27.66 - 5
+  inner_shift_y: middle_shift_y + -10.41
+  global_bind: 10
+points:
+  key:
+    padding: cy
+    footprints:
+          choc_hotswap:
+            type: choc
+            nets:
+              from: =column_net
+              to: GND
+            params:
+                keycaps: true
+                reverse: true
+                hotswap: true
+          choc:
+            type: choc
+            anchor:
+              rotate: 180
+            nets:
+              from: =column_net
+              to: GND
+            params:
+                keycaps: true
+                reverse: true
+  zones:
+    pinky_zone:
+      anchor:
+        rotate: 0
+      columns:
+        pinky:
+          rotate: 8.75
+      rows:
+        bottom:
+          bind: [1, 5, 0, 0]
+          column_net: P21
+        home:
+          bind: [1, 5, 1, 0]
+          column_net: P20
+        top:
+          bind: [0, 5, 1, 0]
+          column_net: P19
+    ring_zone:
+      anchor:
+        shift: [ring_shift_x, ring_shift_y]
+      columns:
+        ring:
+          rotate: 10
+      rows:
+        bottom:
+          bind: [1, 5, 16.5, 5]
+          column_net: P18
+        middle:
+          bind: [1, 5, 1, 5]
+          column_net: P17
+        top:
+          bind: [0, 5, 1, 5]
+          column_net: P16
+    middle_zone:
+      anchor:
+         shift: [middle_shift_x, middle_shift_y]
+      columns:
+        middle:
+          rotate: 10
+      rows:
+        bottom:
+          bind: [1, 5, 21, 5]
+          column_net: P15
+        middle:
+          bind: [1, 5, 1, 5]
+          column_net: P14
+        top:
+          bind: [0, 5, 1, 5]
+          column_net: P13
+    inner_zone:
+      anchor:
+        shift: [inner_shift_x, inner_shift_y]
+        rotate: -10
+      columns:
+        index:
+        inner:
+          spread: cx
+      rows:
+        bottom:
+          bind: [1, 19, 5, 5]
+          column_net: P12
+        home:
+          bind: [1, 19, 1, 5]
+          column_net: P11
+        top:
+          bind: [0, 27, 5, 15]
+          column_net: P10
+    thumb:
+      anchor:
+        ref: inner_zone_inner_bottom
+        orient: 10
+        shift: [7.2 + 5, -22.24]
+        rotate: -173
+      columns:
+        space:
+        switch:
+          spread: cx + 0.25 * cx
+      rows:
+        thumb:
+          bind: [0, 5, 8, 5]
+          column_net: P9
+  rotate: 0
+  mirror:
+    ref: pinky_zone_pinky_home
+    distance: 260
+outlines:
+  exports:
+    raw: 
+      - type: keys
+        side: left
+        size: [1cx , 1cx]
+    cutout:
+      - type: outline
+        name: raw
+        fillet: 3
+    keycap_outlines:
+      - type: keys
+        side: left
+        size: [1cx - 0.5, 1cy - 0.5] # Choc keycaps are 17.5 x 16.5
+        bound: false
+pcbs:
+  main:
+    outlines:
+      main:
+        outline: cutout
+    footprints:
+      promicro:
+        type: promicro
+        anchor:
+          ref: inner_zone_inner_bottom
+          shift: [19, 25.5]
+          rotate: -90
+        params:
+          orientation: down
+ 
